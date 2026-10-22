@@ -1,0 +1,1155 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Controle de Demanda HL5 - Portal Gerencial</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Chart.js Datalabels Plugin -->
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0"></script>
+    <!-- PapaParse para CSV -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+    </style>
+</head>
+<body class="bg-slate-100 text-slate-800 min-h-screen p-4 space-y-4">
+
+    <!-- CABEÇALHO DARK NAVY -->
+    <header class="bg-[#0b1329] border border-slate-900 rounded-2xl p-4 shadow-xl flex flex-col md:flex-row items-center justify-between gap-4 text-white">
+        <div class="flex items-center space-x-4">
+            <div class="bg-sky-500 text-white p-3.5 rounded-2xl flex items-center justify-center shadow-lg shadow-sky-500/20">
+                <i class="fa-solid fa-clock-rotate-left text-2xl"></i>
+            </div>
+            <div>
+                <div class="flex items-center space-x-3 flex-wrap">
+                    <h1 class="text-lg md:text-xl font-bold tracking-tight text-white">CONTROLE DE DEMANDA DE HL5 (5G)</h1>
+                    <span id="badge-status" class="text-xs font-semibold text-sky-400 bg-sky-950/80 border border-sky-800/80 px-2.5 py-0.5 rounded-md">
+                        <i class="fa-solid fa-spinner fa-spin mr-1"></i> Conectando...
+                    </span>
+                </div>
+                <p class="text-xs text-slate-300 mt-0.5">
+                    Contrato Vivo • Acompanhamento Gerencial de Ativação • Planta Interna & Rede de Acesso
+                </p>
+            </div>
+        </div>
+
+        <div class="flex items-center space-x-3 w-full md:w-auto justify-end">
+            <div class="text-right hidden lg:block mr-2">
+                <p class="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Última Sincronização</p>
+                <p id="hora-sincronizacao" class="text-sm font-bold text-white font-mono">--:--:--</p>
+            </div>
+
+            <button onclick="carregarDados(true)" class="flex items-center space-x-2 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs px-4 py-2.5 rounded-xl transition shadow-md">
+                <i class="fa-solid fa-arrows-rotate"></i>
+                <span>Sincronizar</span>
+            </button>
+
+            <button onclick="window.print()" class="flex items-center space-x-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-semibold text-xs px-4 py-2.5 rounded-xl transition">
+                <i class="fa-solid fa-print"></i>
+                <span>Relatório / PDF</span>
+            </button>
+
+            <button onclick="exportarCSV()" class="flex items-center space-x-2 bg-sky-600 hover:bg-sky-500 text-white font-semibold text-xs px-4 py-2.5 rounded-xl transition shadow-md">
+                <i class="fa-solid fa-file-excel"></i>
+                <span>Exportar Base</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- BARRA COMPACTA DE SINCRONIZAÇÃO -->
+    <div class="bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-2 flex items-center justify-between text-xs text-emerald-800">
+        <div class="flex items-center space-x-2">
+            <i class="fa-solid fa-circle-check text-emerald-600 text-sm"></i>
+            <span><strong>Sucesso:</strong> Base de dados sincronizada e atualizada em tempo real com a planilha.</span>
+        </div>
+        <span class="text-[11px] font-semibold text-amber-800 bg-amber-100/70 border border-amber-200 px-2.5 py-0.5 rounded-md">
+            Objetivo: Redução de Pendências & Agilidade nas Ativações 5G
+        </span>
+    </div>
+
+    <!-- QUADRO DE INSIGHTS & DESTAQUES DA ANÁLISE -->
+    <section class="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm space-y-3">
+        <div class="flex items-center justify-between border-b border-slate-100 pb-2">
+            <div class="flex items-center space-x-2">
+                <div class="bg-indigo-50 text-indigo-600 p-2 rounded-lg">
+                    <i class="fa-regular fa-lightbulb text-base"></i>
+                </div>
+                <div>
+                    <h2 class="text-xs font-bold uppercase tracking-wider text-slate-700">Quadro de Insights & Destaques da Análise</h2>
+                    <p class="text-[11px] text-slate-400">Resumo executivo gerado automaticamente conforme o período filtrado</p>
+                </div>
+            </div>
+            <span class="text-[10px] font-bold text-purple-700 bg-purple-50 border border-purple-100 px-3 py-1 rounded-full uppercase tracking-wider">
+                Diagnóstico em Tempo Real
+            </span>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div class="bg-slate-50 border border-slate-100 rounded-xl p-3">
+                <p class="text-[10px] font-bold uppercase tracking-wider text-sky-600">Eficiência de Execução</p>
+                <p id="insight-execucao" class="text-xs text-slate-600 mt-1">Carregando indicadores...</p>
+            </div>
+            <div class="bg-slate-50 border border-slate-100 rounded-xl p-3">
+                <p class="text-[10px] font-bold uppercase tracking-wider text-rose-600">Gargalo Principal</p>
+                <p id="insight-gargalo" class="text-xs text-slate-600 mt-1">Carregando indicadores...</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- CARDS DE KPIS -->
+    <section class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3">
+        
+        <!-- 1. Total Demandas -->
+        <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between h-32">
+            <div class="flex justify-between items-center text-slate-400">
+                <span class="text-[10px] font-bold uppercase tracking-wider">Total Demandas</span>
+                <i class="fa-solid fa-circle-info text-xs text-slate-400"></i>
+            </div>
+            <p id="kpi-recebidas" class="text-3xl font-black text-slate-800">0</p>
+            <div class="border-t border-slate-100 pt-2 flex justify-between items-center">
+                <span class="text-[9px] font-bold text-sky-700 bg-sky-50 border border-sky-100 px-1.5 py-0.5 rounded">Baremo Unit.: R$ 166,72</span>
+                <p id="fin-total-prisma" class="text-sm font-black text-slate-800">R$ 0,00</p>
+            </div>
+        </div>
+
+        <!-- 2. Programados -->
+        <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between h-32 border-l-4 border-l-sky-500">
+            <div class="flex justify-between items-center">
+                <span class="text-[10px] font-bold uppercase tracking-wider text-sky-600">Programados</span>
+                <i class="fa-solid fa-calendar-check text-xs text-sky-500"></i>
+            </div>
+            <div class="flex items-baseline justify-between">
+                <p id="kpi-programados" class="text-3xl font-black text-sky-600">0</p>
+                <span id="pct-programados" class="text-[10px] bg-sky-50 text-sky-700 px-2 py-0.5 rounded-md font-bold">0% do total</span>
+            </div>
+            <div class="border-t border-slate-100 pt-2 text-right">
+                <p id="fin-prog-prisma" class="text-sm font-black text-sky-700">R$ 0,00</p>
+            </div>
+        </div>
+
+        <!-- 3. Executadas -->
+        <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between h-32 border-l-4 border-l-emerald-500">
+            <div class="flex justify-between items-center">
+                <span class="text-[10px] font-bold uppercase tracking-wider text-emerald-600">Executadas</span>
+                <i class="fa-solid fa-circle-check text-xs text-emerald-500"></i>
+            </div>
+            <div class="flex items-baseline justify-between">
+                <p id="kpi-executadas" class="text-3xl font-black text-emerald-600">0</p>
+                <span id="pct-executadas" class="text-[10px] bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-md font-bold">0% do total</span>
+            </div>
+            <div class="border-t border-slate-100 pt-2 text-right">
+                <p id="fin-exec-prisma" class="text-sm font-black text-emerald-700">R$ 0,00</p>
+            </div>
+        </div>
+
+        <!-- 4. Pendentes -->
+        <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between h-32 border-l-4 border-l-amber-500">
+            <div class="flex justify-between items-center">
+                <span class="text-[10px] font-bold uppercase tracking-wider text-amber-600">Pendentes</span>
+                <i class="fa-solid fa-hourglass-half text-xs text-amber-500"></i>
+            </div>
+            <div class="flex items-baseline justify-between">
+                <p id="kpi-pendentes" class="text-3xl font-black text-amber-600">0</p>
+                <span id="pct-pendentes" class="text-[10px] bg-amber-50 text-amber-700 px-2 py-0.5 rounded-md font-bold">0% do total</span>
+            </div>
+            <div class="border-t border-slate-100 pt-2 text-right">
+                <p id="fin-pend-prisma" class="text-sm font-black text-amber-700">R$ 0,00</p>
+            </div>
+        </div>
+
+        <!-- 5. Impedimento VIVO -->
+        <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between h-32 border-l-4 border-l-purple-500">
+            <div class="flex justify-between items-center">
+                <span class="text-[10px] font-bold uppercase tracking-wider text-purple-600">Imped. VIVO</span>
+                <i class="fa-solid fa-triangle-exclamation text-xs text-purple-500"></i>
+            </div>
+            <div class="flex items-baseline justify-between">
+                <p id="kpi-vivo" class="text-3xl font-black text-purple-600">0</p>
+                <span id="pct-vivo" class="text-[10px] bg-purple-50 text-purple-700 px-2 py-0.5 rounded-md font-bold">0% do total</span>
+            </div>
+            <div class="border-t border-slate-100 pt-2 text-right">
+                <p id="fin-vivo-prisma" class="text-sm font-black text-purple-700">R$ 0,00</p>
+            </div>
+        </div>
+
+    </section>
+
+    <!-- PAINEL DE FILTROS -->
+    <section class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-3">
+        <div class="flex items-center justify-between border-b border-slate-100 pb-2">
+            <span class="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                <i class="fa-solid fa-filter text-sky-500 mr-1.5"></i>Filtros de Pesquisa
+            </span>
+            <button onclick="limparFiltros()" class="flex items-center space-x-1 text-xs text-slate-500 hover:text-rose-600 font-semibold px-2.5 py-1 rounded-lg hover:bg-rose-50 transition border border-slate-200">
+                <i class="fa-solid fa-filter-circle-xmark"></i>
+                <span>Limpar Filtros</span>
+            </button>
+        </div>
+
+        <div class="grid grid-cols-2 md:grid-cols-7 gap-3">
+            <div>
+                <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Ano</label>
+                <select id="filtro-ano" onchange="aplicarFiltros()" class="w-full text-xs bg-slate-50 text-slate-700 border border-slate-200 rounded-xl p-2.5 focus:border-sky-500 focus:bg-white outline-none">
+                    <option value="">Todos os Anos</option>
+                </select>
+            </div>
+            
+            <div class="relative">
+                <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Mês</label>
+                <button type="button" onclick="toggleDropdownMes()" class="w-full text-xs bg-slate-50 text-slate-700 border border-slate-200 rounded-xl p-2.5 flex justify-between items-center focus:border-sky-500 outline-none">
+                    <span id="label-meses-sel" class="truncate">Todos os Meses</span>
+                    <i class="fa-solid fa-chevron-down text-slate-400 text-[10px]"></i>
+                </button>
+                
+                <div id="dropdown-meses" class="hidden absolute left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-xl z-30 p-2 max-h-56 overflow-y-auto space-y-1">
+                    <label class="flex items-center space-x-2 text-xs text-slate-700 p-1.5 hover:bg-slate-50 rounded cursor-pointer">
+                        <input type="checkbox" value="01" class="chk-mes rounded text-sky-600" onchange="atualizarSelecaoMeses()"> <span>01 - Janeiro</span>
+                    </label>
+                    <label class="flex items-center space-x-2 text-xs text-slate-700 p-1.5 hover:bg-slate-50 rounded cursor-pointer">
+                        <input type="checkbox" value="02" class="chk-mes rounded text-sky-600" onchange="atualizarSelecaoMeses()"> <span>02 - Fevereiro</span>
+                    </label>
+                    <label class="flex items-center space-x-2 text-xs text-slate-700 p-1.5 hover:bg-slate-50 rounded cursor-pointer">
+                        <input type="checkbox" value="03" class="chk-mes rounded text-sky-600" onchange="atualizarSelecaoMeses()"> <span>03 - Março</span>
+                    </label>
+                    <label class="flex items-center space-x-2 text-xs text-slate-700 p-1.5 hover:bg-slate-50 rounded cursor-pointer">
+                        <input type="checkbox" value="04" class="chk-mes rounded text-sky-600" onchange="atualizarSelecaoMeses()"> <span>04 - Abril</span>
+                    </label>
+                    <label class="flex items-center space-x-2 text-xs text-slate-700 p-1.5 hover:bg-slate-50 rounded cursor-pointer">
+                        <input type="checkbox" value="05" class="chk-mes rounded text-sky-600" onchange="atualizarSelecaoMeses()"> <span>05 - Maio</span>
+                    </label>
+                    <label class="flex items-center space-x-2 text-xs text-slate-700 p-1.5 hover:bg-slate-50 rounded cursor-pointer">
+                        <input type="checkbox" value="06" class="chk-mes rounded text-sky-600" onchange="atualizarSelecaoMeses()"> <span>06 - Junho</span>
+                    </label>
+                    <label class="flex items-center space-x-2 text-xs text-slate-700 p-1.5 hover:bg-slate-50 rounded cursor-pointer">
+                        <input type="checkbox" value="07" class="chk-mes rounded text-sky-600" onchange="atualizarSelecaoMeses()"> <span>07 - Julho</span>
+                    </label>
+                    <label class="flex items-center space-x-2 text-xs text-slate-700 p-1.5 hover:bg-slate-50 rounded cursor-pointer">
+                        <input type="checkbox" value="08" class="chk-mes rounded text-sky-600" onchange="atualizarSelecaoMeses()"> <span>08 - Agosto</span>
+                    </label>
+                    <label class="flex items-center space-x-2 text-xs text-slate-700 p-1.5 hover:bg-slate-50 rounded cursor-pointer">
+                        <input type="checkbox" value="09" class="chk-mes rounded text-sky-600" onchange="atualizarSelecaoMeses()"> <span>09 - Setembro</span>
+                    </label>
+                    <label class="flex items-center space-x-2 text-xs text-slate-700 p-1.5 hover:bg-slate-50 rounded cursor-pointer">
+                        <input type="checkbox" value="10" class="chk-mes rounded text-sky-600" onchange="atualizarSelecaoMeses()"> <span>10 - Outubro</span>
+                    </label>
+                    <label class="flex items-center space-x-2 text-xs text-slate-700 p-1.5 hover:bg-slate-50 rounded cursor-pointer">
+                        <input type="checkbox" value="11" class="chk-mes rounded text-sky-600" onchange="atualizarSelecaoMeses()"> <span>11 - Novembro</span>
+                    </label>
+                    <label class="flex items-center space-x-2 text-xs text-slate-700 p-1.5 hover:bg-slate-50 rounded cursor-pointer">
+                        <input type="checkbox" value="12" class="chk-mes rounded text-sky-600" onchange="atualizarSelecaoMeses()"> <span>12 - Dezembro</span>
+                    </label>
+                </div>
+            </div>
+
+            <div>
+                <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Programado</label>
+                <select id="filtro-programado" onchange="aplicarFiltros()" class="w-full text-xs bg-slate-50 text-slate-700 border border-slate-200 rounded-xl p-2.5 focus:border-sky-500 focus:bg-white outline-none">
+                    <option value="">Todos os Status</option>
+                </select>
+            </div>
+
+            <div>
+                <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Área Operacional</label>
+                <select id="filtro-area" onchange="aplicarFiltros()" class="w-full text-xs bg-slate-50 text-slate-700 border border-slate-200 rounded-xl p-2.5 focus:border-sky-500 focus:bg-white outline-none">
+                    <option value="">Todas as Áreas</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Coordenador TEL</label>
+                <select id="filtro-coordenador" onchange="aplicarFiltros()" class="w-full text-xs bg-slate-50 text-slate-700 border border-slate-200 rounded-xl p-2.5 focus:border-sky-500 focus:bg-white outline-none">
+                    <option value="">Todos os Coordenadores</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Situação Atividade</label>
+                <select id="filtro-situacao" onchange="aplicarFiltros()" class="w-full text-xs bg-slate-50 text-slate-700 border border-slate-200 rounded-xl p-2.5 focus:border-sky-500 focus:bg-white outline-none">
+                    <option value="">Todas as Situações</option>
+                </select>
+            </div>
+
+            <div>
+                <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Responsável Pendência</label>
+                <select id="filtro-responsavel" onchange="aplicarFiltros()" class="w-full text-xs bg-slate-50 text-slate-700 border border-slate-200 rounded-xl p-2.5 focus:border-sky-500 focus:bg-white outline-none">
+                    <option value="">Todos os Responsáveis</option>
+                </select>
+            </div>
+        </div>
+    </section>
+
+    <!-- GRÁFICOS GERENCIAIS -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <div class="lg:col-span-2 bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+            <h3 class="text-xs font-bold text-slate-700 uppercase tracking-wider mb-3">DEMANDA X EXECUÇÃO POR DIA</h3>
+            <div class="h-64">
+                <canvas id="chartEvolucao"></canvas>
+            </div>
+        </div>
+        <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+            <h3 class="text-xs font-bold text-slate-700 uppercase tracking-wider mb-3">DISTRIBUIÇÃO DAS PENDÊNCIAS</h3>
+            <div class="h-64">
+                <canvas id="chartMotivos"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- CONSOLIDADO POR ÁREA -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <section class="lg:col-span-2 bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+            <h3 class="text-xs font-bold text-slate-700 uppercase tracking-wider mb-3">CONSOLIDADO POR ÁREA OPERACIONAL</h3>
+            <div class="overflow-x-auto">
+                <table class="w-full text-xs text-left text-slate-600">
+                    <thead class="bg-slate-50 text-slate-500 uppercase font-bold border-b border-slate-200">
+                        <tr>
+                            <th class="p-2.5 text-left">Área</th>
+                            <th class="p-2.5 text-center">Recebidas</th>
+                            <th class="p-2.5 text-center">Executadas</th>
+                            <th class="p-2.5 text-center">Pendentes</th>
+                            <th class="p-2.5 text-center bg-purple-50 text-purple-700 font-extrabold rounded-tl-lg">IMPED. VIVO</th>
+                            <th class="p-2.5 text-center bg-purple-50/70 text-purple-700">AGENDAMENTO</th>
+                            <th class="p-2.5 text-center bg-purple-50/70 text-purple-700">REDE / EXTERNA</th>
+                            <th class="p-2.5 text-center bg-purple-50/70 text-purple-700 rounded-tr-lg">SCRIPT / ILHA</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tbody-area" class="divide-y divide-slate-100"></tbody>
+                </table>
+            </div>
+        </section>
+
+        <section class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between">
+            <h3 class="text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">SITUAÇÃO DA ATIVIDADE</h3>
+            <div class="h-64 flex items-center justify-center relative p-2">
+                <canvas id="chartSituacao"></canvas>
+            </div>
+        </section>
+    </div>
+
+    <!-- TABELA DETALHADA -->
+    <section class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+        <div class="flex flex-col md:flex-row md:items-center justify-between mb-3 gap-2">
+            <h3 class="text-xs font-bold text-slate-700 uppercase tracking-wider">DETALHAMENTO OPERACIONAL DAS DEMANDAS</h3>
+            <div class="relative w-full md:w-72">
+                <i class="fa-solid fa-magnifying-glass absolute left-3 top-3 text-slate-400 text-xs"></i>
+                <input type="text" id="busca-tabela" onkeyup="filtrarTabela()" placeholder="Buscar por Site, OS, Cidade..." class="text-xs bg-slate-50 text-slate-700 border border-slate-200 rounded-xl pl-8 pr-3 py-2 w-full focus:border-sky-500 focus:bg-white outline-none">
+            </div>
+        </div>
+        <div class="overflow-x-auto max-h-96 border border-slate-100 rounded-xl">
+            <table class="w-full text-xs text-left text-slate-600 min-w-[1100px]">
+                <thead class="bg-slate-50 text-slate-700 font-bold border-b border-slate-200 sticky top-0 z-10">
+                    <tr>
+                        <th class="py-3 px-4">Site</th>
+                        <th class="py-3 px-4">OS PRISMA</th>
+                        <th class="py-3 px-4">Cidade</th>
+                        <th class="py-3 px-4">Área</th>
+                        <th class="py-3 px-4">Coordenador</th>
+                        <th class="py-3 px-4">Criação</th>
+                        <th class="py-3 px-4">Previsão Execução</th>
+                        <th class="py-3 px-4">Situação</th>
+                        <th class="py-3 px-4">Programação (Vivo)</th>
+                        <th class="py-3 px-4 text-center">Reprogramações</th>
+                        <th class="py-3 px-4 text-center">Observações</th>
+                    </tr>
+                </thead>
+                <tbody id="tbody-detalhes" class="divide-y divide-slate-100"></tbody>
+            </table>
+        </div>
+    </section>
+
+    <!-- MODAL DE OBSERVAÇÕES -->
+    <div id="modal-obs" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-lg w-full p-5 shadow-2xl border border-slate-100 space-y-4">
+            <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+                <div class="flex items-center space-x-2">
+                    <i class="fa-solid fa-comment-dots text-sky-500 text-lg"></i>
+                    <h4 class="font-bold text-slate-800 text-sm">Observações da Demanda: <span id="modal-site" class="text-sky-600"></span></h4>
+                </div>
+                <button onclick="fecharModal()" class="text-slate-400 hover:text-slate-600 p-1">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+            <div class="bg-slate-50 p-4 rounded-xl border border-slate-100 text-xs text-slate-700 font-mono whitespace-pre-wrap max-h-72 overflow-y-auto leading-relaxed" id="modal-texto">
+                Sem informações cadastradas.
+            </div>
+            <div class="text-right">
+                <button onclick="fecharModal()" class="bg-slate-800 hover:bg-slate-700 text-white font-semibold text-xs px-4 py-2 rounded-xl transition">
+                    Fechar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        Chart.register(ChartDataLabels);
+
+        const CSV_ORIGINAL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSal4I1LQGFkVZipyOLlY_OMR4LFLofU-dOSHZprenGm0aBMcxuEDNnnHkI5jfeuj7WTNwuVrs1zp65/pub?gid=1085677200&single=true&output=csv';
+        const PROXY_RAPIDO = 'https://corsproxy.io/?';
+        const PROXY_BACKUP = 'https://api.allorigins.win/raw?url=';
+        
+        let dadosGlobais = [];
+        let chartEvolucaoObj = null;
+        let chartMotivosObj = null;
+        let chartSituacaoObj = null;
+        let primeiraCarga = true;
+
+        document.addEventListener("DOMContentLoaded", carregarDados);
+
+        document.addEventListener("click", (e) => {
+            const container = document.getElementById("dropdown-meses");
+            const btn = e.target.closest("button");
+            if (container && !container.contains(e.target) && (!btn || !btn.getAttribute("onclick")?.includes("toggleDropdownMes"))) {
+                container.classList.add("hidden");
+            }
+        });
+
+        function toggleDropdownMes() {
+            const dropdown = document.getElementById("dropdown-meses");
+            if (dropdown) dropdown.classList.toggle("hidden");
+        }
+
+        function atualizarSelecaoMeses() {
+            const checkboxes = document.querySelectorAll(".chk-mes:checked");
+            const label = document.getElementById("label-meses-sel");
+            
+            if (checkboxes.length === 0) {
+                label.innerText = "Todos os Meses";
+            } else if (checkboxes.length === 1) {
+                label.innerText = `1 Mês Selecionado`;
+            } else {
+                label.innerText = `${checkboxes.length} Meses Selecionados`;
+            }
+
+            aplicarFiltros();
+        }
+
+        function abrirModalObs(site, texto) {
+            document.getElementById('modal-site').innerText = site;
+            document.getElementById('modal-texto').innerText = texto || 'Sem observações registradas na Coluna V.';
+            document.getElementById('modal-obs').classList.remove('hidden');
+        }
+
+        function fecharModal() {
+            document.getElementById('modal-obs').classList.add('hidden');
+        }
+
+        async function carregarDados(forceRefresh = false) {
+            setLoadingStatus(true, "Carregando dados...");
+
+            // Adiciona timestamp para forçar a limpeza de cache no Google Sheets e Proxies
+            const cacheBuster = `&t=${new Date().getTime()}`;
+            const urlPlanilha = CSV_ORIGINAL + cacheBuster;
+
+            let csvText = await buscarCSVComTimeout(urlPlanilha);
+
+            if (!csvText) {
+                setLoadingStatus(true, "Conectando via Proxy Rápido...");
+                csvText = await buscarCSVComTimeout(PROXY_RAPIDO + encodeURIComponent(urlPlanilha));
+            }
+
+            if (!csvText) {
+                setLoadingStatus(true, "Conectando via Proxy Backup...");
+                csvText = await buscarCSVComTimeout(PROXY_BACKUP + encodeURIComponent(urlPlanilha));
+            }
+
+            if (csvText) {
+                Papa.parse(csvText, {
+                    header: true,
+                    skipEmptyLines: true,
+                    complete: function(results) {
+                        processarResultados(results.data);
+                    }
+                });
+            } else {
+                setLoadingStatus(false, "Erro ao carregar dados", "rose");
+            }
+        }
+
+        async function buscarCSVComTimeout(url, timeoutMs = 3000) {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+            try {
+                const response = await fetch(url, { signal: controller.signal, cache: 'no-store' });
+                clearTimeout(timeoutId);
+                if (response.ok) return await response.text();
+                return null;
+            } catch (error) {
+                clearTimeout(timeoutId);
+                return null;
+            }
+        }
+
+        function formatarDataBr(str) {
+            if (!str) return '';
+            const partes = str.split('/');
+            if (partes.length === 3) {
+                const p1 = partes[0].padStart(2, '0');
+                const p2 = partes[1].padStart(2, '0');
+                const p3 = partes[2].length === 2 ? '20' + partes[2] : partes[2];
+                return `${p2}/${p1}/${p3}`;
+            }
+            return str;
+        }
+
+        function processarResultados(rawRows) {
+            dadosGlobais = rawRows.map(item => {
+                const getVal = (chave) => {
+                    const keyEncontrada = Object.keys(item).find(k => k.trim().toLowerCase() === chave.trim().toLowerCase());
+                    return keyEncontrada ? item[keyEncontrada] : '';
+                };
+
+                // Extração exata da Coluna J (Data Criação)
+                const dataCriacaoStr = getVal('Data Criação');
+                const previsaoStr = getVal('Previsão de execução');
+                const programadoVivoStr = getVal('Programação') || getVal('Prioridade Vivo');
+
+                let ano = '';
+                let mes = '';
+                let dataFormatadaBr = dataCriacaoStr;
+                let dataIso = '';
+
+                if (dataCriacaoStr) {
+                    const partes = dataCriacaoStr.split('/');
+                    if (partes.length === 2) {
+                        const p1 = partes[0].padStart(2, '0');
+                        const p2 = partes[1].padStart(2, '0');
+                        mes = p1;
+                        ano = new Date().getFullYear().toString();
+                        dataFormatadaBr = `${p2}/${mes}/${ano}`;
+                        dataIso = `${ano}-${mes}-${p2}`;
+                    } else if (partes.length === 3) {
+                        const p1 = partes[0].padStart(2, '0');
+                        const p2 = partes[1].padStart(2, '0');
+                        const p3 = partes[2].length === 2 ? '20' + partes[2] : partes[2];
+                        
+                        mes = p1;
+                        const dia = p2;
+                        ano = p3;
+                        
+                        dataFormatadaBr = `${dia}/${mes}/${ano}`;
+                        dataIso = `${ano}-${mes}-${dia}`;
+                    }
+                }
+
+                return {
+                    site: getVal('Site'),
+                    os: getVal('OS PRISMA'),
+                    cidade: getVal('Cidade'),
+                    area: getVal('Area') || 'Outros',
+                    coordenador: getVal('Coordenador TEL') || 'N/I',
+                    dataCriacao: dataCriacaoStr,
+                    dataBr: dataFormatadaBr,
+                    dataIso: dataIso,
+                    previsaoExecucao: formatarDataBr(previsaoStr),
+                    programadoVivo: programadoVivoStr,
+                    ano: ano,
+                    mes: mes,
+                    situacao: getVal('Situação Atividade'),
+                    responsavel: getVal('Responsabilidade') || getVal('Responsavel'), // Coluna X
+                    detalhes: getVal('Detalhes_Informações'),
+                    resumoPendencias: getVal('Resumo Pendencias'),
+                    reprogramacao: getVal('Reprogramação') || getVal('Reprogramaco') || '0',
+                    pontoBaremo: getVal('Ponto Baremo') || '0',
+                    valorPrisma: getVal('Valor Prisma') || '0'
+                };
+            }).filter(d => d.site !== '');
+
+            atualizarHorario();
+            popularFiltros(dadosGlobais);
+
+            if (primeiraCarga) {
+                definirDataAtualNosFiltros();
+                primeiraCarga = false;
+            }
+
+            aplicarFiltros();
+            setLoadingStatus(false, "Google Sheets Live • Aba Analítico", "sky");
+        }
+
+        function definirDataAtualNosFiltros() {
+            const hoje = new Date();
+            const anoAtual = hoje.getFullYear().toString();
+            const mesAtual = (hoje.getMonth() + 1).toString().padStart(2, '0');
+
+            const selectAno = document.getElementById('filtro-ano');
+            if (selectAno && Array.from(selectAno.options).some(o => o.value === anoAtual)) {
+                selectAno.value = anoAtual;
+            }
+
+            const chkMesAtual = document.querySelector(`.chk-mes[value="${mesAtual}"]`);
+            if (chkMesAtual) {
+                chkMesAtual.checked = true;
+                atualizarSelecaoMeses();
+            }
+        }
+
+        function setLoadingStatus(isLoading, text, color = "amber") {
+            const badge = document.getElementById('badge-status');
+            if (!badge) return;
+            
+            if (isLoading) {
+                badge.className = "text-xs font-semibold text-amber-400 bg-amber-950/80 border border-amber-800/80 px-2.5 py-0.5 rounded-md";
+                badge.innerHTML = `<i class="fa-solid fa-spinner fa-spin mr-1"></i> ${text}`;
+            } else if (color === "sky") {
+                badge.className = "text-xs font-semibold text-sky-400 bg-sky-950/80 border border-sky-800/80 px-2.5 py-0.5 rounded-md";
+                badge.innerText = text;
+            } else {
+                badge.className = "text-xs font-semibold text-rose-400 bg-rose-950/80 border border-rose-800/80 px-2.5 py-0.5 rounded-md";
+                badge.innerHTML = `<i class="fa-solid fa-triangle-exclamation mr-1"></i> ${text}`;
+            }
+        }
+
+        function atualizarHorario() {
+            const horaEl = document.getElementById('hora-sincronizacao');
+            if (horaEl) horaEl.innerText = new Date().toLocaleTimeString('pt-BR');
+        }
+
+        function popularFiltros(dados) {
+            const anos = [...new Set(dados.map(d => d.ano).filter(a => a !== ''))].sort().reverse();
+            const programados = [...new Set(dados.map(d => d.programadoVivo).filter(p => p !== ''))].sort();
+            const areas = [...new Set(dados.map(d => d.area))].sort();
+            const coords = [...new Set(dados.map(d => d.coordenador))].sort();
+            const situacoes = [...new Set(dados.map(d => d.situacao))].sort();
+            const responsaveisPend = [...new Set(dados.map(d => d.resumoPendencias).filter(r => r !== ''))].sort();
+
+            preencherSelect('filtro-ano', anos);
+            preencherSelect('filtro-programado', programados);
+            preencherSelect('filtro-area', areas);
+            preencherSelect('filtro-coordenador', coords);
+            preencherSelect('filtro-situacao', situacoes);
+            preencherSelect('filtro-responsavel', responsaveisPend);
+        }
+
+        function preencherSelect(id, lista) {
+            const select = document.getElementById(id);
+            if (!select) return;
+            const valAtual = select.value;
+            select.innerHTML = select.options[0].outerHTML;
+            lista.forEach(item => {
+                if(item) select.innerHTML += `<option value="${item}">${item}</option>`;
+            });
+            select.value = valAtual;
+        }
+
+        function limparFiltros() {
+            document.getElementById('filtro-ano').value = '';
+            document.querySelectorAll('.chk-mes').forEach(c => c.checked = false);
+            document.getElementById("label-meses-sel").innerText = "Todos os Meses";
+
+            document.getElementById('filtro-programado').value = '';
+            document.getElementById('filtro-area').value = '';
+            document.getElementById('filtro-coordenador').value = '';
+            document.getElementById('filtro-situacao').value = '';
+            document.getElementById('filtro-responsavel').value = '';
+            document.getElementById('busca-tabela').value = '';
+
+            aplicarFiltros();
+        }
+
+        function aplicarFiltros() {
+            const ano = document.getElementById('filtro-ano')?.value || '';
+            const chksMeses = Array.from(document.querySelectorAll('.chk-mes:checked')).map(c => c.value);
+
+            const programado = document.getElementById('filtro-programado')?.value || '';
+            const area = document.getElementById('filtro-area')?.value || '';
+            const coord = document.getElementById('filtro-coordenador')?.value || '';
+            const situacao = document.getElementById('filtro-situacao')?.value || '';
+            const respPend = document.getElementById('filtro-responsavel')?.value || '';
+
+            const filtrados = dadosGlobais.filter(d => {
+                const matchAno = !ano || d.ano === ano;
+                const matchMes = chksMeses.length === 0 || chksMeses.includes(d.mes);
+                const matchProgramado = !programado || d.programadoVivo === programado;
+                const matchArea = !area || d.area === area;
+                const matchCoord = !coord || d.coordenador === coord;
+                const matchSituacao = !situacao || d.situacao === situacao;
+                const matchRespPend = !respPend || d.resumoPendencias === respPend;
+
+                return matchAno && matchMes && matchProgramado && matchArea && matchCoord && matchSituacao && matchRespPend;
+            });
+
+            atualizarKPIsEFinanceiro(filtrados);
+            atualizarInsights(filtrados);
+            atualizarGraficoEvolucao(filtrados);
+            atualizarGraficoMotivos(filtrados);
+            atualizarTabelaAreaEChartSituacao(filtrados);
+            atualizarTabelaDetalhes(filtrados);
+        }
+
+        function parseMoeda(str) {
+            if (!str) return 0;
+            let val = String(str).replace('R$', '').replace(/\./g, '').replace(',', '.').trim();
+            return parseFloat(val) || 0;
+        }
+
+        function formatMoeda(num) {
+            return num.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+        }
+
+        // Mapeamento dos Cards com base na Coluna N (Situação Atividade) e Regras Especificadas
+        function atualizarKPIsEFinanceiro(dados) {
+            const total = dados.length;
+
+            // 1. Programadas (55): Coluna N == Liberado Execução
+            const programadosList = dados.filter(d => {
+                const sit = (d.situacao || '').trim().toLowerCase();
+                return sit === 'liberado execução' || sit === 'liberado execucao';
+            });
+            const programados = programadosList.length;
+
+            // 2. Executadas (22): Coluna N == Executada em Campo
+            const executadasList = dados.filter(d => {
+                const sit = (d.situacao || '').trim().toLowerCase();
+                return sit === 'executada em campo';
+            });
+            const executadas = executadasList.length;
+
+            // 3. Pendentes (49): Total Demandas - Executadas
+            const pendentes = total - executadas;
+            const pendentesList = dados.filter(d => (d.situacao || '').trim().toLowerCase() !== 'executada em campo');
+
+            // 4. Impedimento VIVO: Coluna N == Pendencia Vivo / Pendente VIVO
+            const vivoList = dados.filter(d => {
+                const sit = (d.situacao || '').trim().toLowerCase();
+                return sit === 'pendente vivo' || sit === 'pendencia vivo' || sit === 'pendência vivo';
+            });
+            const vivo = vivoList.length;
+
+            const pctProg = total > 0 ? ((programados / total) * 100).toFixed(1) : 0;
+            const pctExec = total > 0 ? ((executadas / total) * 100).toFixed(1) : 0;
+            const pctPend = total > 0 ? ((pendentes / total) * 100).toFixed(1) : 0;
+            const pctVivo = total > 0 ? ((vivo / total) * 100).toFixed(1) : 0;
+
+            if (document.getElementById('kpi-recebidas')) document.getElementById('kpi-recebidas').innerText = total;
+            if (document.getElementById('kpi-programados')) document.getElementById('kpi-programados').innerText = programados;
+            if (document.getElementById('pct-programados')) document.getElementById('pct-programados').innerText = `${pctProg}% do total`;
+            
+            if (document.getElementById('kpi-executadas')) document.getElementById('kpi-executadas').innerText = executadas;
+            if (document.getElementById('pct-executadas')) document.getElementById('pct-executadas').innerText = `${pctExec}% do total`;
+            
+            if (document.getElementById('kpi-pendentes')) document.getElementById('kpi-pendentes').innerText = pendentes;
+            if (document.getElementById('pct-pendentes')) document.getElementById('pct-pendentes').innerText = `${pctPend}% do total`;
+            
+            if (document.getElementById('kpi-vivo')) document.getElementById('kpi-vivo').innerText = vivo;
+            if (document.getElementById('pct-vivo')) document.getElementById('pct-vivo').innerText = `${pctVivo}% do total`;
+
+            let totalPrisma = 0;
+            let progPrisma = 0;
+            let execPrisma = 0;
+            let pendPrisma = 0;
+            let vivoPrisma = 0;
+
+            dados.forEach(d => totalPrisma += parseMoeda(d.valorPrisma));
+            programadosList.forEach(d => progPrisma += parseMoeda(d.valorPrisma));
+            executadasList.forEach(d => execPrisma += parseMoeda(d.valorPrisma));
+            pendentesList.forEach(d => pendPrisma += parseMoeda(d.valorPrisma));
+            vivoList.forEach(d => vivoPrisma += parseMoeda(d.valorPrisma));
+
+            if (document.getElementById('fin-total-prisma')) document.getElementById('fin-total-prisma').innerText = formatMoeda(totalPrisma);
+            if (document.getElementById('fin-prog-prisma')) document.getElementById('fin-prog-prisma').innerText = formatMoeda(progPrisma);
+            if (document.getElementById('fin-exec-prisma')) document.getElementById('fin-exec-prisma').innerText = formatMoeda(execPrisma);
+            if (document.getElementById('fin-pend-prisma')) document.getElementById('fin-pend-prisma').innerText = formatMoeda(pendPrisma);
+            if (document.getElementById('fin-vivo-prisma')) document.getElementById('fin-vivo-prisma').innerText = formatMoeda(vivoPrisma);
+        }
+
+        function atualizarInsights(dados) {
+            const total = dados.length;
+            const executadas = dados.filter(d => (d.situacao || '').trim().toLowerCase() === 'executada em campo').length;
+            const pct = total > 0 ? ((executadas / total) * 100).toFixed(1) : 0;
+
+            const insExec = document.getElementById('insight-execucao');
+            if (insExec) insExec.innerHTML = `Atualmente <strong>${pct}%</strong> das demandas (${executadas} de ${total}) foram concluídas no período.`;
+
+            const pendentes = dados.filter(d => (d.situacao || '').trim().toLowerCase() !== 'executada em campo');
+            const motivos = {};
+            pendentes.forEach(d => {
+                if (d.resumoPendencias) motivos[d.resumoPendencias] = (motivos[d.resumoPendencias] || 0) + 1;
+            });
+
+            let maiorMotivo = "N/A";
+            let maiorQtd = 0;
+            Object.keys(motivos).forEach(m => {
+                if (motivos[m] > maiorQtd) {
+                    maiorQtd = motivos[m];
+                    maiorMotivo = m;
+                }
+            });
+
+            const insGargalo = document.getElementById('insight-gargalo');
+            if (insGargalo) insGargalo.innerHTML = `O principal motivo pendente é <strong>"${maiorMotivo}"</strong> com ${maiorQtd} ocorrência(s).`;
+        }
+
+        function atualizarGraficoEvolucao(dados) {
+            const mapaDatas = {};
+            dados.forEach(d => {
+                if (d.dataIso) {
+                    if (!mapaDatas[d.dataIso]) {
+                        mapaDatas[d.dataIso] = { dataBr: d.dataBr, recebidas: 0, executadas: 0 };
+                    }
+                    mapaDatas[d.dataIso].recebidas++;
+                    if ((d.situacao || '').trim().toLowerCase() === 'executada em campo') {
+                        mapaDatas[d.dataIso].executadas++;
+                    }
+                }
+            });
+
+            let chavesIso = [];
+            const chksMeses = Array.from(document.querySelectorAll('.chk-mes:checked')).map(c => c.value);
+            const anoSel = document.getElementById('filtro-ano')?.value || new Date().getFullYear().toString();
+
+            if (chksMeses.length === 1) {
+                const mes = parseInt(chksMeses[0], 10);
+                const ano = parseInt(anoSel, 10);
+                const diasNoMes = new Date(ano, mes, 0).getDate();
+                
+                for (let dia = 1; dia <= diasNoMes; dia++) {
+                    const dStr = dia.toString().padStart(2, '0');
+                    const mStr = mes.toString().padStart(2, '0');
+                    const isoKey = `${ano}-${mStr}-${dStr}`;
+                    const brKey = `${dStr}/${mStr}/${ano}`;
+                    
+                    if (!mapaDatas[isoKey]) {
+                        mapaDatas[isoKey] = { dataBr: brKey, recebidas: 0, executadas: 0 };
+                    }
+                    chavesIso.push(isoKey);
+                }
+                chavesIso.sort();
+            } else {
+                chavesIso = Object.keys(mapaDatas).sort();
+            }
+
+            const labelsBr = chavesIso.map(k => mapaDatas[k].dataBr);
+            const recebidas = chavesIso.map(k => mapaDatas[k].recebidas);
+            const executadas = chavesIso.map(k => mapaDatas[k].executadas);
+
+            let acumuladoRecebidas = 0;
+            let acumuladoExecutadas = 0;
+            const saldoAcumulado = chavesIso.map(k => {
+                acumuladoRecebidas += mapaDatas[k].recebidas;
+                acumuladoExecutadas += mapaDatas[k].executadas;
+                return acumuladoRecebidas - acumuladoExecutadas;
+            });
+
+            const canvas = document.getElementById('chartEvolucao');
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            if (chartEvolucaoObj) chartEvolucaoObj.destroy();
+
+            chartEvolucaoObj = new Chart(ctx, {
+                data: {
+                    labels: labelsBr,
+                    datasets: [
+                        {
+                            type: 'bar',
+                            label: 'Demandas Recebidas',
+                            data: recebidas,
+                            backgroundColor: '#0284c7',
+                            borderRadius: 6
+                        },
+                        {
+                            type: 'bar',
+                            label: 'Executadas',
+                            data: executadas,
+                            backgroundColor: '#10b981',
+                            borderRadius: 6
+                        },
+                        {
+                            type: 'line',
+                            label: 'Saldo Acumulado',
+                            data: saldoAcumulado,
+                            borderColor: '#ef4444',
+                            backgroundColor: '#ef4444',
+                            borderWidth: 2,
+                            pointRadius: 4,
+                            pointBackgroundColor: '#ef4444',
+                            fill: false,
+                            tension: 0.2
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { 
+                        legend: { labels: { color: '#475569' } },
+                        datalabels: { display: false }
+                    },
+                    scales: {
+                        x: { ticks: { color: '#64748b' }, grid: { display: false } },
+                        y: { ticks: { color: '#64748b' }, grid: { color: '#f1f5f9' } }
+                    }
+                }
+            });
+        }
+
+        const pluginBarLabels = {
+            id: 'barLabels',
+            afterDatasetsDraw(chart) {
+                const { ctx } = chart;
+                chart.data.datasets.forEach((dataset, i) => {
+                    const meta = chart.getDatasetMeta(i);
+                    meta.data.forEach((bar, index) => {
+                        const dataObj = dataset.extraData ? dataset.extraData[index] : null;
+                        if (dataObj) {
+                            const text = `${dataObj.qtd} (${dataObj.pct}%)`;
+                            ctx.save();
+                            ctx.fillStyle = '#475569';
+                            ctx.font = 'bold 11px Inter, sans-serif';
+                            ctx.textAlign = 'left';
+                            ctx.textBaseline = 'middle';
+                            ctx.fillText(text, bar.x + 8, bar.y);
+                            ctx.restore();
+                        }
+                    });
+                });
+            }
+        };
+
+        function atualizarGraficoMotivos(dados) {
+            const pendentes = dados.filter(d => (d.situacao || '').trim().toLowerCase() !== 'executada em campo');
+            const motivos = {};
+            let totalPendencias = 0;
+
+            pendentes.forEach(d => {
+                const m = d.resumoPendencias || 'Sem Resumo';
+                motivos[m] = (motivos[m] || 0) + 1;
+                totalPendencias++;
+            });
+
+            const ordenados = Object.keys(motivos)
+                .map(key => ({ motivo: key, qtd: motivos[key] }))
+                .sort((a, b) => b.qtd - a.qtd);
+
+            const labelsLimpos = ordenados.map(o => o.motivo);
+            const valores = ordenados.map(o => o.qtd);
+            const extraData = ordenados.map(o => ({
+                qtd: o.qtd,
+                pct: totalPendencias > 0 ? ((o.qtd / totalPendencias) * 100).toFixed(1) : '0'
+            }));
+
+            const bgColors = valores.map((v, i) => i === 0 ? '#ef4444' : '#0284c7');
+
+            const canvas = document.getElementById('chartMotivos');
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            if (chartMotivosObj) chartMotivosObj.destroy();
+
+            chartMotivosObj = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labelsLimpos,
+                    datasets: [{
+                        label: 'Pendências',
+                        data: valores,
+                        backgroundColor: bgColors,
+                        borderRadius: 6,
+                        extraData: extraData
+                    }]
+                },
+                plugins: [pluginBarLabels],
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    layout: {
+                        padding: { right: 80 }
+                    },
+                    plugins: {
+                        legend: { display: false },
+                        datalabels: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const ex = extraData[context.dataIndex];
+                                    return `Quantidade: ${ex.qtd} (${ex.pct}%)`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: { ticks: { color: '#64748b' }, grid: { color: '#f1f5f9' } },
+                        y: { ticks: { color: '#475569', font: { size: 10, weight: 'bold' } }, grid: { display: false } }
+                    }
+                }
+            });
+        }
+
+        function atualizarTabelaAreaEChartSituacao(dados) {
+            const porArea = {};
+            const situacaoContagem = {};
+
+            dados.forEach(d => {
+                if (!porArea[d.area]) {
+                    porArea[d.area] = { 
+                        recebidas: 0, 
+                        executadas: 0, 
+                        pendentes: 0, 
+                        vivo: 0, 
+                        vivoAgendamento: 0, 
+                        vivoRede: 0, 
+                        vivoScript: 0 
+                    };
+                }
+                porArea[d.area].recebidas++;
+
+                const sitNome = d.situacao || 'Não Informado';
+                situacaoContagem[sitNome] = (situacaoContagem[sitNome] || 0) + 1;
+
+                if ((d.situacao || '').trim().toLowerCase() === 'executada em campo') {
+                    porArea[d.area].executadas++;
+                }
+
+                if ((d.responsavel || '').trim().toUpperCase() === 'VIVO') {
+                    porArea[d.area].vivo++;
+                    if (d.resumoPendencias.includes('Agendamento')) porArea[d.area].vivoAgendamento++;
+                    if (d.resumoPendencias.includes('Rede')) porArea[d.area].vivoRede++;
+                    if (d.resumoPendencias.includes('SCRIPT') || d.resumoPendencias.includes('Ilha')) porArea[d.area].vivoScript++;
+                }
+            });
+
+            const tbody = document.getElementById('tbody-area');
+            if (tbody) {
+                tbody.innerHTML = '';
+                Object.keys(porArea).forEach(area => {
+                    const item = porArea[area];
+                    const pendenteCalculado = item.recebidas - item.executadas;
+
+                    tbody.innerHTML += `
+                        <tr class="hover:bg-slate-50 transition">
+                            <td class="p-2.5 font-bold text-slate-800 text-left">${area}</td>
+                            <td class="p-2.5 font-semibold text-slate-700 text-center">${item.recebidas}</td>
+                            <td class="p-2.5 text-emerald-600 font-bold text-center">${item.executadas}</td>
+                            <td class="p-2.5 text-amber-600 font-bold text-center">${pendenteCalculado}</td>
+                            <td class="p-2.5 text-purple-700 font-bold text-center bg-purple-50/50">${item.vivo}</td>
+                            <td class="p-2.5 text-purple-700 text-center bg-purple-50/30">${item.vivoAgendamento}</td>
+                            <td class="p-2.5 text-purple-700 text-center bg-purple-50/30">${item.vivoRede}</td>
+                            <td class="p-2.5 text-purple-700 text-center bg-purple-50/30">${item.vivoScript}</td>
+                        </tr>
+                    `;
+                });
+            }
+
+            const canvasSituacao = document.getElementById('chartSituacao');
+            if (canvasSituacao) {
+                const ctx = canvasSituacao.getContext('2d');
+                if (chartSituacaoObj) chartSituacaoObj.destroy();
+
+                const totalGeral = dados.length;
+                
+                const colorMap = {
+                    'Pendente Execução': '#10b981',  
+                    'Executada em Campo': '#f59e0b', 
+                    'Pendencia Vivo': '#8b5cf6'      
+                };
+
+                const labels = Object.keys(situacaoContagem);
+                const dataValues = Object.values(situacaoContagem);
+                const bgColors = labels.map(l => colorMap[l] || '#0284c7');
+
+                chartSituacaoObj = new Chart(ctx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            data: dataValues,
+                            backgroundColor: bgColors,
+                            borderWidth: 2,
+                            borderColor: '#ffffff'
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        layout: {
+                            padding: 30
+                        },
+                        plugins: {
+                            legend: {
+                                display: false 
+                            },
+                            datalabels: {
+                                color: '#475569',
+                                font: {
+                                    size: 10,
+                                    weight: 'bold',
+                                    family: 'Inter, sans-serif'
+                                },
+                                textAlign: 'center',
+                                anchor: 'end',
+                                align: 'end',
+                                offset: 8,
+                                formatter: function(value, context) {
+                                    const label = context.chart.data.labels[context.dataIndex];
+                                    const pct = totalGeral > 0 ? ((value / totalGeral) * 100).toFixed(1) : '0';
+                                    return `${label}\n(${value} - ${pct}%)`;
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+        }
+
+        function atualizarTabelaDetalhes(dados) {
+            const tbody = document.getElementById('tbody-detalhes');
+            if (!tbody) return;
+            tbody.innerHTML = '';
+            dados.forEach(d => {
+                const badgeClass = d.situacao === 'Executada em Campo' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-amber-50 text-amber-700 border border-amber-200';
+                
+                const obsTexto = (d.detalhes || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
+
+                tbody.innerHTML += `
+                    <tr class="hover:bg-slate-50 transition">
+                        <td class="py-2.5 px-4 font-bold text-sky-600 whitespace-nowrap">${d.site}</td>
+                        <td class="py-2.5 px-4 text-slate-700 font-medium whitespace-nowrap">${d.os}</td>
+                        <td class="py-2.5 px-4 text-slate-600 whitespace-nowrap">${d.cidade}</td>
+                        <td class="py-2.5 px-4 text-slate-600 whitespace-nowrap">${d.area}</td>
+                        <td class="py-2.5 px-4 text-slate-600 whitespace-nowrap">${d.coordenador}</td>
+                        <td class="py-2.5 px-4 text-slate-600 whitespace-nowrap">${d.dataBr || d.dataCriacao}</td>
+                        <td class="py-2.5 px-4 text-slate-600 whitespace-nowrap font-semibold">${d.previsaoExecucao || '-'}</td>
+                        <td class="py-2.5 px-4 whitespace-nowrap"><span class="px-2.5 py-1 text-[10px] rounded-md font-bold ${badgeClass}">${d.situacao}</span></td>
+                        <td class="py-2.5 px-4 text-slate-700 whitespace-nowrap font-medium">${d.programadoVivo || '-'}</td>
+                        <td class="py-2.5 px-4 text-center whitespace-nowrap font-semibold text-slate-700">${d.reprogramacao || '0'}</td>
+                        <td class="py-2.5 px-4 text-center whitespace-nowrap">
+                            <button onclick="abrirModalObs('${d.site}', '${obsTexto}')" class="bg-sky-50 hover:bg-sky-100 text-sky-700 border border-sky-200 text-[10px] font-bold px-2.5 py-1 rounded-lg transition flex items-center justify-center space-x-1 mx-auto">
+                                <i class="fa-regular fa-eye"></i>
+                                <span>Ver Obs</span>
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            });
+        }
+
+        function filtrarTabela() {
+            const termo = document.getElementById('busca-tabela').value.toLowerCase();
+            const linhas = document.querySelectorAll('#tbody-detalhes tr');
+            linhas.forEach(linha => {
+                linha.style.display = linha.innerText.toLowerCase().includes(termo) ? '' : 'none';
+            });
+        }
+
+        function exportarCSV() {
+            let csv = '\uFEFF';
+            csv += 'Site,OS PRISMA,Cidade,Área,Coordenador TEL,Data Criação,Previsão Execução,Situação,Programação (Vivo),Reprogramação,Responsabilidade,Detalhes\n';
+            
+            dadosGlobais.forEach(d => {
+                const tratar = (txt) => `"${String(txt || '').replace(/"/g, '""')}"`;
+                csv += `${tratar(d.site)},${tratar(d.os)},${tratar(d.cidade)},${tratar(d.area)},${tratar(d.coordenador)},${tratar(d.dataBr || d.dataCriacao)},${tratar(d.previsaoExecucao)},${tratar(d.situacao)},${tratar(d.programadoVivo)},${tratar(d.reprogramacao)},${tratar(d.responsavel)},${tratar(d.detalhes)}\n`;
+            });
+
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = 'Controle_HL5_Export.csv';
+            link.click();
+        }
+    </script>
+</body>
+</html>
